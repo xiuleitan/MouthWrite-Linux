@@ -1,0 +1,27 @@
+[package]
+name = "mouthwrite-linux"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+bytes = "1"
+futures = "0.3"
+cpal = "0.15"
+evdev = "0.12"
+uinput = "0.1"
+reqwest = { version = "0.12", features = ["stream", "json"] }
+eventsource-stream = "0.2"
+rodio = "0.19"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+clap = { version = "4.0", features = ["derive"] }
+dirs = "5.0"
+thiserror = "1.0"
+arboard = "3.4"
+base64 = "0.22"
+libc = "0.2"

@@ -1,0 +1,27 @@
+# Rust build output
+/target/
+
+# Release packaging output
+/dist/
+*.tar.gz
+
+# Local debug / temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Local environment / secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local one-off artifacts
+compile_errors.txt
