@@ -96,6 +96,19 @@ cp config_template.toml ~/.config/mouthwrite/config.toml
 
 推荐用用户级服务（不需要 root，且更适配桌面会话）。
 
+如果你是在 **tar.gz 解压目录** 中安装（推荐）：
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp ./mouthwrite.service ~/.config/systemd/user/
+
+systemctl --user daemon-reload
+systemctl --user enable --now mouthwrite.service
+systemctl --user status mouthwrite.service
+```
+
+如果你是在 **源码仓库目录** 中安装：
+
 ```bash
 mkdir -p ~/.config/systemd/user
 cp packaging/systemd/mouthwrite.service ~/.config/systemd/user/
