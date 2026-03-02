@@ -59,13 +59,22 @@ impl AppCore {
 
                     info!("Mode activated: {:?}", current_mode);
 
-                    AudioPlayer::play_start_sound();
-
                     // Start Audio Recording (buffered mode)
                     match AudioRecorder::start_recording() {
-                        Ok((stop_tx, data_rx)) => {
+                        Ok((stop_tx, data_rx, ready_rx)) => {
                             recording_stop_tx = Some(stop_tx);
                             recording_data_rx = Some(data_rx);
+
+                            // Only play the start cue after the input stream is running.
+                            match ready_rx.await {
+                                Ok(()) => AudioPlayer::play_start_sound(),
+                                Err(_) => {
+                                    error!("Recording stream failed before ready signal");
+                                    current_mode = None;
+                                    recording_stop_tx = None;
+                                    recording_data_rx = None;
+                                }
+                            }
                         }
                         Err(e) => {
                             error!("Failed to start recording: {}", e);

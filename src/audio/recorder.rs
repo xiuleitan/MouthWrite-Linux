@@ -7,11 +7,18 @@ pub struct AudioRecorder;
 
 impl AudioRecorder {
     /// Starts recording audio from the default input device.
-    /// Returns a stop sender and a receiver that yields the complete PCM data
-    /// (16kHz, mono, 16-bit LE) when recording stops.
-    pub fn start_recording() -> Result<(tokio::sync::oneshot::Sender<()>, tokio::sync::oneshot::Receiver<Vec<u8>>), AppError> {
+    /// Returns:
+    /// - stop sender
+    /// - data receiver for complete PCM data (16kHz, mono, 16-bit LE)
+    /// - ready receiver that fires once the input stream is started
+    pub fn start_recording() -> Result<(
+        tokio::sync::oneshot::Sender<()>,
+        tokio::sync::oneshot::Receiver<Vec<u8>>,
+        tokio::sync::oneshot::Receiver<()>,
+    ), AppError> {
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
         let (data_tx, data_rx) = tokio::sync::oneshot::channel::<Vec<u8>>();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<()>();
 
         // Shared buffer to accumulate PCM data
         let buffer: Arc<Mutex<Vec<u8>>> = Arc::new(Mutex::new(Vec::new()));
@@ -53,6 +60,7 @@ impl AudioRecorder {
                         error!("Failed to play stream: {}", e);
                         return;
                     }
+                    let _ = ready_tx.send(());
                     // Wait until requested to stop
                     let _ = stop_rx.blocking_recv();
                     drop(stream);
@@ -74,7 +82,7 @@ impl AudioRecorder {
             }
         });
 
-        Ok((stop_tx, data_rx))
+        Ok((stop_tx, data_rx, ready_rx))
     }
 
     fn build_stream<T>(
