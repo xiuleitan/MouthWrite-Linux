@@ -16,6 +16,8 @@ pub struct HotkeysConfig {
     pub direct_mode: String,
     pub translate_mode: String,
     pub paste_shortcut: String,
+    #[serde(default = "default_start_cue_delay_ms")]
+    pub start_cue_delay_ms: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -48,6 +50,10 @@ pub struct TranslationConfig {
 
 fn default_false() -> bool {
     false
+}
+
+fn default_start_cue_delay_ms() -> u64 {
+    800
 }
 
 impl Config {

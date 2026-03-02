@@ -43,11 +43,33 @@ impl AudioRecorder {
             let stream_config: cpal::StreamConfig = config.clone().into();
             let channels = stream_config.channels;
             let sample_rate = stream_config.sample_rate.0;
+            let mut ready_tx_opt = Some(ready_tx);
 
             let stream_result = match config.sample_format() {
-                cpal::SampleFormat::F32 => Self::build_stream::<f32>(&device, &stream_config, buffer_clone.clone(), channels, sample_rate),
-                cpal::SampleFormat::I16 => Self::build_stream::<i16>(&device, &stream_config, buffer_clone.clone(), channels, sample_rate),
-                cpal::SampleFormat::U16 => Self::build_stream::<u16>(&device, &stream_config, buffer_clone.clone(), channels, sample_rate),
+                cpal::SampleFormat::F32 => Self::build_stream::<f32>(
+                    &device,
+                    &stream_config,
+                    buffer_clone.clone(),
+                    channels,
+                    sample_rate,
+                    ready_tx_opt.take(),
+                ),
+                cpal::SampleFormat::I16 => Self::build_stream::<i16>(
+                    &device,
+                    &stream_config,
+                    buffer_clone.clone(),
+                    channels,
+                    sample_rate,
+                    ready_tx_opt.take(),
+                ),
+                cpal::SampleFormat::U16 => Self::build_stream::<u16>(
+                    &device,
+                    &stream_config,
+                    buffer_clone.clone(),
+                    channels,
+                    sample_rate,
+                    ready_tx_opt.take(),
+                ),
                 format => {
                     error!("Unsupported sample format: {:?}", format);
                     return;
@@ -60,7 +82,6 @@ impl AudioRecorder {
                         error!("Failed to play stream: {}", e);
                         return;
                     }
-                    let _ = ready_tx.send(());
                     // Wait until requested to stop
                     let _ = stop_rx.blocking_recv();
                     drop(stream);
@@ -91,17 +112,23 @@ impl AudioRecorder {
         buffer: Arc<Mutex<Vec<u8>>>,
         channels: u16,
         sample_rate: u32,
+        ready_tx: Option<tokio::sync::oneshot::Sender<()>>,
     ) -> Result<cpal::Stream, AppError>
     where
         T: cpal::Sample + Send + Sync + 'static + cpal::SizedSample,
         f32: cpal::FromSample<T>,
     {
         let err_fn = |err| error!("An error occurred on the input audio stream: {}", err);
+        let mut ready_tx = ready_tx;
 
         let stream = device
             .build_input_stream(
                 config,
                 move |data: &[T], _: &cpal::InputCallbackInfo| {
+                    // Signal readiness when the first real input callback arrives.
+                    if let Some(tx) = ready_tx.take() {
+                        let _ = tx.send(());
+                    }
                     if let Ok(pcm_16khz) = Self::convert_to_16k_mono_pcm(data, channels, sample_rate) {
                         let mut buf = buffer.lock().unwrap();
                         buf.extend_from_slice(&pcm_16khz);

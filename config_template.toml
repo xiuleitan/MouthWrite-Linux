@@ -25,6 +25,7 @@
 direct_mode = "KEY_RIGHTALT"           # 按住说话 → 语音识别 + 文本优化
 translate_mode = "KEY_RIGHTMETA+KEY_SPACE"  # 按住说话 → 语音识别 + 翻译
 paste_shortcut = "KEY_LEFTSHIFT+KEY_INSERT"  # 模拟粘贴的快捷键（也可用 KEY_LEFTCTRL+KEY_V）
+start_cue_delay_ms = 800               # 麦克风收到第一帧后，延迟多久播放 start.mp3（单位毫秒）
 
 # ─── ASR 语音识别配置 ─────────────────────────────────────────────────────────
 # 使用 qwen3-asr-flash 模型，通过 OpenAI 兼容 HTTP API 进行录音文件识别

@@ -66,13 +66,28 @@ impl AppCore {
                             recording_data_rx = Some(data_rx);
 
                             // Only play the start cue after the input stream is running.
-                            match ready_rx.await {
-                                Ok(()) => AudioPlayer::play_start_sound(),
-                                Err(_) => {
+                            match tokio::time::timeout(
+                                tokio::time::Duration::from_millis(1200),
+                                ready_rx,
+                            )
+                            .await
+                            {
+                                Ok(Ok(())) => {
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(
+                                        config.hotkeys.start_cue_delay_ms,
+                                    ))
+                                    .await;
+                                    AudioPlayer::play_start_sound();
+                                }
+                                Ok(Err(_)) => {
                                     error!("Recording stream failed before ready signal");
                                     current_mode = None;
                                     recording_stop_tx = None;
                                     recording_data_rx = None;
+                                }
+                                Err(_) => {
+                                    warn!("Timed out waiting for first audio callback; continuing");
+                                    AudioPlayer::play_start_sound();
                                 }
                             }
                         }
