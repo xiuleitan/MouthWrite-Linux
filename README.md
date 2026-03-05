@@ -96,27 +96,32 @@ cp config_template.toml ~/.config/mouthwrite/config.toml
 
 推荐用用户级服务（不需要 root，且更适配桌面会话）。
 
-如果你是在 **tar.gz 解压目录** 中安装（推荐）：
+按下面步骤手动创建服务文件（可自行调整配置）：
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp ./mouthwrite.service ~/.config/systemd/user/
+cat > ~/.config/systemd/user/mouthwrite.service <<'EOF'
+[Unit]
+Description=MouthWrite Linux Voice Input Daemon
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/mouthwrite-linux start
+Restart=on-failure
+RestartSec=2
+Environment=RUST_LOG=info,mouthwrite_linux=debug
+
+[Install]
+WantedBy=default.target
+EOF
 
 systemctl --user daemon-reload
 systemctl --user enable --now mouthwrite.service
 systemctl --user status mouthwrite.service
 ```
 
-如果你是在 **源码仓库目录** 中安装：
-
-```bash
-mkdir -p ~/.config/systemd/user
-cp packaging/systemd/mouthwrite.service ~/.config/systemd/user/
-
-systemctl --user daemon-reload
-systemctl --user enable --now mouthwrite.service
-systemctl --user status mouthwrite.service
-```
+如果可执行文件不在 `~/.local/bin/mouthwrite-linux`，请把 `ExecStart` 改成你的实际路径。
 
 ## 常用命令
 

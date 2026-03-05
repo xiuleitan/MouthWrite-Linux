@@ -27,7 +27,6 @@ mkdir -p "${PKG_DIR}"
 cp target/release/mouthwrite-linux "${PKG_DIR}/"
 cp config_template.toml "${PKG_DIR}/"
 cp -r assets "${PKG_DIR}/"
-cp packaging/systemd/mouthwrite.service "${PKG_DIR}/"
 cp README.md "${PKG_DIR}/"
 
 if command -v strip >/dev/null 2>&1; then
