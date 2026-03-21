@@ -1,4 +1,4 @@
-use crate::audio::{player::AudioPlayer, recorder::AudioRecorder};
+use crate::audio::{player::AudioPlayer, recorder::PersistentRecorder};
 use crate::config::Config;
 use crate::input::{evdev_hook::EvdevHook, uinput_sim::UinputSim, InputEvent};
 use crate::network::{asr_http::AsrHttpClient, llm_sse::LlmClient};
@@ -17,8 +17,20 @@ impl AppCore {
         let hook = EvdevHook::new(&config.hotkeys)?;
         hook.spawn_listener(input_tx);
 
+        // Initialize persistent audio recorder (stream starts immediately)
+        let recorder = PersistentRecorder::new(config.hotkeys.pre_roll_ms)?;
+        recorder.wait_ready().await?;
+
+        // Initialize audio player (pre-opens output stream)
+        let player = match AudioPlayer::new() {
+            Ok(p) => Some(p),
+            Err(e) => {
+                warn!("Failed to initialize AudioPlayer: {}. Sounds will be disabled.", e);
+                None
+            }
+        };
+
         // State variables
-        let mut recording_stop_tx: Option<tokio::sync::oneshot::Sender<()>> = None;
         let mut recording_data_rx: Option<tokio::sync::oneshot::Receiver<Vec<u8>>> = None;
         let mut current_mode: Option<&str> = None;
         let mut pending_paste = false;
@@ -39,13 +51,20 @@ impl AppCore {
         while let Some(event) = input_rx.recv().await {
             match event {
                 InputEvent::DirectModePressed | InputEvent::TranslateModePressed => {
+                    // When translation is disabled, ignore all translate events entirely.
+                    if !config.translation.enable_translation
+                        && (event == InputEvent::TranslateModePressed)
+                    {
+                        continue;
+                    }
+
                     let requested_mode = if event == InputEvent::DirectModePressed {
                         "Direct"
                     } else {
                         "Translate"
                     };
 
-                    if recording_stop_tx.is_some() {
+                    if recording_data_rx.is_some() {
                         // Allow upgrading Direct -> Translate when overlap combo is formed
                         // while user is still holding the hotkey.
                         if current_mode == Some("Direct") && requested_mode == "Translate" {
@@ -59,41 +78,19 @@ impl AppCore {
 
                     info!("Mode activated: {:?}", current_mode);
 
-                    // Start Audio Recording (buffered mode)
-                    match AudioRecorder::start_recording() {
-                        Ok((stop_tx, data_rx, ready_rx)) => {
-                            recording_stop_tx = Some(stop_tx);
-                            recording_data_rx = Some(data_rx);
+                    // Start recording — near-instant, no device initialization needed.
+                    let data_rx = recorder.start_recording();
+                    recording_data_rx = Some(data_rx);
 
-                            // Only play the start cue after the input stream is running.
-                            match tokio::time::timeout(
-                                tokio::time::Duration::from_millis(1200),
-                                ready_rx,
-                            )
-                            .await
-                            {
-                                Ok(Ok(())) => {
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(
-                                        config.hotkeys.start_cue_delay_ms,
-                                    ))
-                                    .await;
-                                    AudioPlayer::play_start_sound();
-                                }
-                                Ok(Err(_)) => {
-                                    error!("Recording stream failed before ready signal");
-                                    current_mode = None;
-                                    recording_stop_tx = None;
-                                    recording_data_rx = None;
-                                }
-                                Err(_) => {
-                                    warn!("Timed out waiting for first audio callback; continuing");
-                                    AudioPlayer::play_start_sound();
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to start recording: {}", e);
-                        }
+                    // Brief delay then play start cue.
+                    if config.hotkeys.start_cue_delay_ms > 0 {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(
+                            config.hotkeys.start_cue_delay_ms,
+                        ))
+                        .await;
+                    }
+                    if let Some(ref p) = player {
+                        p.play_start_sound();
                     }
                 }
                 InputEvent::DirectModeReleased | InputEvent::TranslateModeReleased => {
@@ -108,10 +105,13 @@ impl AppCore {
                         continue;
                     }
 
-                    if let Some(stop_tx) = recording_stop_tx.take() {
-                        let _ = stop_tx.send(()); // Stops the recording
+                    if recording_data_rx.is_some() {
+                        // Stop recording and retrieve the PCM data.
+                        recorder.stop_recording();
 
-                        AudioPlayer::play_end_sound();
+                        if let Some(ref p) = player {
+                            p.play_end_sound();
+                        }
                         info!("Recording ended, starting ASR...");
 
                         // Retrieve the complete PCM recording
@@ -183,7 +183,9 @@ impl AppCore {
                                     warn!("Failed to set clipboard: {}", e);
                                 }
                             }
-                            AudioPlayer::play_click_prompt_sound();
+                            if let Some(ref p) = player {
+                                p.play_click_prompt_sound();
+                            }
                             info!("Result ready. Please click target location to paste.");
                             pending_paste = true;
                         } else {

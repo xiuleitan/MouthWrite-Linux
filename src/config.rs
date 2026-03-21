@@ -18,6 +18,8 @@ pub struct HotkeysConfig {
     pub paste_shortcut: String,
     #[serde(default = "default_start_cue_delay_ms")]
     pub start_cue_delay_ms: u64,
+    #[serde(default = "default_pre_roll_ms")]
+    pub pre_roll_ms: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -46,6 +48,12 @@ pub struct TranslationConfig {
     pub target_lang: String,
     #[serde(default = "default_false")]
     pub enable_thinking: bool,
+    #[serde(default = "default_true")]
+    pub enable_translation: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_false() -> bool {
@@ -53,7 +61,11 @@ fn default_false() -> bool {
 }
 
 fn default_start_cue_delay_ms() -> u64 {
-    800
+    100
+}
+
+fn default_pre_roll_ms() -> u64 {
+    500
 }
 
 impl Config {
