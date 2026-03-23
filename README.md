@@ -1,8 +1,8 @@
-![构建状态](https://img.shields.io/github/actions/workflow/status/OWNER/REPO/ci.yml?branch=main&label=构建状态)
-![最新版本](https://img.shields.io/github/v/release/OWNER/REPO?label=最新版本)
-![许可证](https://img.shields.io/github/license/OWNER/REPO?label=许可证)
+![构建状态](https://img.shields.io/github/actions/workflow/status/xiuleitan/MouthWrite-Linux/ci.yml?branch=main&label=构建状态)
+![最新版本](https://img.shields.io/github/v/release/xiuleitan/MouthWrite-Linux?label=v1.0.2)
+![许可证](https://img.shields.io/github/license/xiuleitan/MouthWrite-Linux?label=MIT)
 
-[![语言-中文](https://img.shields.io/badge/语言-中文-red)](README.md)
+[![语言-中文](https://img.shields.io/badge/语言-中文-green)](README.md)
 [![Language-English](https://img.shields.io/badge/Language-English-blue)](README_EN.md)
 
 # MouthWrite Linux
