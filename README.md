@@ -1,3 +1,10 @@
+![构建状态](https://img.shields.io/github/actions/workflow/status/OWNER/REPO/ci.yml?branch=main&label=构建状态)
+![最新版本](https://img.shields.io/github/v/release/OWNER/REPO?label=最新版本)
+![许可证](https://img.shields.io/github/license/OWNER/REPO?label=许可证)
+
+[![语言-中文](https://img.shields.io/badge/语言-中文-red)](README.md)
+[![Language-English](https://img.shields.io/badge/Language-English-blue)](README_EN.md)
+
 # MouthWrite Linux
 
 MouthWrite 是一个 Linux 系统级语音输入工具。  
@@ -103,17 +110,22 @@ mkdir -p ~/.config/systemd/user
 cat > ~/.config/systemd/user/mouthwrite.service <<'EOF'
 [Unit]
 Description=MouthWrite Linux Voice Input Daemon
-After=default.target
+# 等待图形会话（X11/Wayland）和音频服务都就绪后再启动
+After=graphical-session.target pipewire.service
+Requires=graphical-session.target
+Wants=pipewire.service
 
 [Service]
 Type=simple
+# 额外延迟 3 秒，确保显示服务器和音频设备完全可用
+ExecStartPre=/usr/bin/sleep 3
 ExecStart=%h/.local/bin/mouthwrite-linux start
 Restart=on-failure
-RestartSec=2
+RestartSec=5
 Environment=RUST_LOG=info,mouthwrite_linux=debug
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
 EOF
 
 systemctl --user daemon-reload
